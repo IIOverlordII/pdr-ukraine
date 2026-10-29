@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ПДР України</title>
+<meta name="description" content="Правила дорожнього руху України: текст, знаки, розмітка, тести та іспит категорії B">
+<meta name="theme-color" content="#1d4ed8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ПДР">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="css/app.css?v=40c9d6ff8c">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn" id="backBtn" aria-label="Назад" hidden>
+        <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <h1 class="topbar-title" id="title">ПДР України</h1>
+      <div class="topbar-extra" id="topExtra"></div>
+      <button class="lang-btn" id="langBtn" aria-label="Мова / Язык">UA</button>
+    </header>
+    <main id="view" tabindex="-1"></main>
+  </div>
+</div>
+<nav class="tabbar" id="tabbar"></nav>
+<div class="modal" id="modal" hidden>
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-card" role="dialog" aria-modal="true">
+    <button class="icon-btn modal-close" data-close aria-label="Закрити">
+      <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+<script src="data/rules.js?v=40c9d6ff8c"></script>
+<script src="data/signs.js?v=40c9d6ff8c"></script>
+<script src="data/marking.js?v=40c9d6ff8c"></script>
+<script src="data/explain.js?v=40c9d6ff8c"></script>
+<script src="data/questions.js?v=40c9d6ff8c"></script>
+<script src="js/scene.js?v=40c9d6ff8c"></script>
+<script src="js/marking-draw.js?v=40c9d6ff8c"></script>
+<script src="js/app.js?v=40c9d6ff8c"></script>
+</body>
+</html>
