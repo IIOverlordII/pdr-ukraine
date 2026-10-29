@@ -215,6 +215,11 @@ for f in sorted((CONTENT / 'questions').glob('*.txt')):
                     errors.append(f'{where}: дві правильні відповіді')
                 q['c'] = len(q['a'])
             q['a'].append(pair(line[2:], where))
+        elif line.startswith('~ '):
+            if not q['a'] or q.get('c') == len(q['a']) - 1:
+                errors.append(f'{where}: «~» має йти одразу після неправильної відповіді («-»)')
+            else:
+                q['a'][-1]['w'] = pair(line[2:], where)
         elif line.startswith('E: '):
             q['e'] = pair(line[3:], where)
         elif line.startswith('R: '):
@@ -229,7 +234,7 @@ data.mkdir(exist_ok=True)
 
 
 def js(name, var, obj):
-    (data / name).write_text(f'window.{var}=' + json.dumps(obj, ensure_ascii=False, separators=(',', ':')) + ';\n', encoding='utf-8')
+    (data / name).write_text(f'window.{var}=' + json.dumps(obj, ensure_ascii=False, separators=(',', ':')) + ';\n', encoding='utf-8', newline='\n')
 
 
 pdr['meta'] = {'edition': meta.get('edition', ''), 'built': time.strftime('%Y-%m-%d')}
@@ -248,16 +253,18 @@ for f in files:
 digest = h.hexdigest()[:10]
 # ?v=<версія> у посиланнях на css/js/data, щоб браузер і WebView2 не брали старі файли з кешу
 index = APP / 'index.html'
-index.write_text(re.sub(r'((?:src|href)="(?:css|js|data)/[^"?]+)(?:\?v=[^"]*)?"', rf'\1?v={digest}"', read(index)), encoding='utf-8')
+index.write_text(re.sub(r'((?:src|href)="(?:css|js|data)/[^"?]+)(?:\?v=[^"]*)?"', rf'\1?v={digest}"', read(index)), encoding='utf-8', newline='\n')
 sw = read(ROOT / 'tools' / 'sw.template.js').replace('__VERSION__', digest).replace('__FILES__', json.dumps(['./'] + files, ensure_ascii=False))
-(APP / 'sw.js').write_text(sw, encoding='utf-8')
+(APP / 'sw.js').write_text(sw, encoding='utf-8', newline='\n')
 
 by_topic = {}
 for q in questions:
     by_topic[q['t']] = by_topic.get(q['t'], 0) + 1
+no_why = sum(1 for q in questions for i, a in enumerate(q['a']) if i != q.get('c') and 'w' not in a)
 print(f"rules: {len(pdr['sections'])} sections, ru {ru_done}/{total_blocks} blocks")
 print(f"signs: {len(signs)}, without image: {len(missing_img)} {missing_img[:12]}, without ru name: {len(missing_ru)}")
 print(f"marking: {len(marking)}, explain: {len(explain)} sections, questions: {len(questions)} {by_topic}")
+print(f"wrong answers without «~» explanation: {no_why}")
 print(f"sw: {len(files)} files, version {digest}")
 if errors:
     print(f'\n{len(errors)} problem(s):')

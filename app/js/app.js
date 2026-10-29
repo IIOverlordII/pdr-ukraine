@@ -117,6 +117,8 @@
   };
   T.uk.errorsForms = 'помилка|помилки|помилок';
   T.ru.errorsForms = 'ошибка|ошибки|ошибок';
+  Object.assign(T.uk, { whyWrong: 'Чому ця відповідь неправильна', thatIsSign: 'Це назва знака', pictureShows: 'На малюнку —', youChoseSign: 'Ви обрали знак', thatIsMark: 'Так позначається розмітка' });
+  Object.assign(T.ru, { whyWrong: 'Почему этот ответ неправильный', thatIsSign: 'Это название знака', pictureShows: 'На рисунке —', youChoseSign: 'Вы выбрали знак', thatIsMark: 'Так обозначается разметка' });
   // 1 помилка, 2–4 помилки, 5+ помилок (однаково для uk і ru)
   const plural = (n, forms) => {
     const [one, few, many] = forms.split('|'), m10 = n % 10, m100 = n % 100;
@@ -456,31 +458,45 @@
   // ───────────────────────── рушій питань ─────────────────────────
   let quiz = null, quizKey = null, timerId = null;
 
+  // до 3 знаків з іншими назвами (спершу з тієї ж групи) — для неправильних варіантів
+  function otherSigns(s, filter) {
+    const out = [], seen = new Set([L(s.name)]);
+    for (const x of shuffle(SIGNS.list.filter(x => x.g === s.g)).concat(shuffle(SIGNS.list))) {
+      if (out.length === 3) break;
+      if (!L(x.name) || seen.has(L(x.name)) || (filter && !filter(x))) continue;
+      seen.add(L(x.name)); out.push(x);
+    }
+    return out;
+  }
+
   function buildOptions(q) {
     if (q.kind === 'signName') {
-      const s = SIGN[q.sign], name = L(s.name);
-      const pool = SIGNS.list.filter(x => x.g === s.g && L(x.name) && L(x.name) !== name);
-      const names = [...new Set(shuffle(pool).map(x => L(x.name)))].slice(0, 3);
-      if (names.length < 3) [...new Set(shuffle(SIGNS.list).map(x => L(x.name)).filter(n => n && n !== name && !names.includes(n)))].slice(0, 3 - names.length).forEach(n => names.push(n));
-      const opts = shuffle([{ text: name, ok: true }].concat(names.map(n => ({ text: n }))));
+      const s = SIGN[q.sign];
+      const opts = shuffle([{ text: L(s.name), ok: true }].concat(otherSigns(s).map(x => ({ text: L(x.name), src: x.c }))));
       return { opts, correct: opts.findIndex(o => o.ok) };
     }
     if (q.kind === 'signPick') {
-      const s = SIGN[q.sign], name = L(s.name);
-      const pool = shuffle(SIGNS.list.filter(x => x.g === s.g && x.img && L(x.name) !== name));
-      const seen = new Set([name]), others = [];
-      for (const x of pool) { if (!seen.has(L(x.name))) { seen.add(L(x.name)); others.push(x); } if (others.length === 3) break; }
-      const opts = shuffle([{ sign: s.c, ok: true }].concat(others.map(x => ({ sign: x.c }))));
+      const s = SIGN[q.sign];
+      const opts = shuffle([{ sign: s.c, ok: true }].concat(otherSigns(s, x => x.g === s.g && x.img).map(x => ({ sign: x.c }))));
       return { opts, correct: opts.findIndex(o => o.ok) };
     }
     if (q.kind === 'mark') {
-      const m = MARK[q.mark], name = L(m.name);
-      const pool = MARKING.list.filter(x => x.kind === m.kind && L(x.name) !== name);
-      const names = [...new Set(shuffle(pool).map(x => L(x.name)))].slice(0, 3);
-      const opts = shuffle([{ text: name, ok: true }].concat(names.map(n => ({ text: n }))));
+      const m = MARK[q.mark];
+      const others = shuffle(MARKING.list.filter(x => x.kind === m.kind && L(x.name) !== L(m.name))).slice(0, 3);
+      const opts = shuffle([{ text: L(m.name), ok: true }].concat(others.map(x => ({ text: L(x.name), mark: x.c }))));
       return { opts, correct: opts.findIndex(o => o.ok) };
     }
-    return { opts: q.a.map(a => ({ text: L(a) })), correct: q.c };
+    return { opts: q.a.map(a => ({ text: L(a), w: a.w })), correct: q.c };
+  }
+
+  // чому обраний варіант неправильний
+  function whyWrong(q, o) {
+    if (!o || o.ok) return '';
+    if (o.w) return rt(L(o.w));
+    if (o.src) return `${esc(t('thatIsSign'))} ${signRef(o.src)}. ${esc(t('pictureShows'))} ${signRef(q.sign)} «${esc(L(SIGN[q.sign].name))}».`;
+    if (o.sign) return `${esc(t('youChoseSign'))} ${signRef(o.sign)} «${esc(L(SIGN[o.sign].name))}».`;
+    if (o.mark) return `${esc(t('thatIsMark'))} <a class="mref" data-mark="${o.mark}">${o.mark}</a>. ${esc(t('pictureShows'))} <a class="mref" data-mark="${q.mark}">${q.mark}</a>.`;
+    return '';
   }
 
   function qMedia(q) {
@@ -558,7 +574,9 @@
       return `<button class="opt${cls}" data-opt="${i}"${answered ? ' disabled' : ''}><span class="ol">${optLabel(i)}</span>${o.sign ? `<img src="${SIGN[o.sign].img}" alt="">` : `<span>${esc(o.text)}</span>`}</button>`;
     }).join('');
     const isOk = answered && quiz.ans[q.id] === b.correct;
+    const why = answered && !isOk ? whyWrong(q, b.opts[quiz.ans[q.id]]) : '';
     const fb = answered && !exam ? `<div class="feedback ${isOk ? 'ok' : 'bad'}"><h4>${esc(isOk ? t('correct') : t('wrong'))}</h4>
+      ${why ? `<div class="why"><b>${esc(t('whyWrong'))}</b><div class="rt">${why}</div></div><b>${esc(t('explanation'))}:</b>` : ''}
       <div class="rt">${qExplain(q)}</div>${qRefs(q).length ? `<div class="refs" style="margin-top:8px"><span class="small muted">${esc(t('seeRule'))}:</span>${qRefs(q).map(r => `<a class="chip" data-point="${r}">${r}</a>`).join('')}</div>` : ''}</div>` : '';
     const last = quiz.i === quiz.list.length - 1;
     const favOn = !!Store.d.favQ[q.id];
@@ -643,6 +661,7 @@
       const show = o => o ? (o.sign ? `<img src="${SIGN[o.sign].img}" alt="" style="height:44px;vertical-align:middle"> ${o.sign}` : esc(o.text)) : '—';
       return `<div class="card">${qMedia(q)}<div class="q-text" style="margin-top:10px">${esc(qText(q))}</div>
         <p class="fail small">${esc(t('yourAnswer'))}: ${a == null ? esc(t('noAnswer')) : show(b.opts[a])}</p>
+        ${a != null && whyWrong(q, b.opts[a]) ? `<div class="why small"><b>${esc(t('whyWrong'))}</b><div class="rt">${whyWrong(q, b.opts[a])}</div></div>` : ''}
         <p class="pass small"><b>${esc(t('correctIs'))}:</b> ${show(b.opts[b.correct])}</p>
         <div class="rt small">${qExplain(q)}</div>${qRefs(q).length ? `<div class="refs" style="margin-top:8px">${qRefs(q).map(r => `<a class="chip" data-point="${r}">${r}</a>`).join('')}</div>` : ''}</div>`;
     }).join('');
