@@ -314,6 +314,8 @@ mark { background: #ffe58a; color: #111; border-radius: 3px; padding: 0 1px; }
 .feedback.ok { background: var(--ok-soft); }
 .feedback.bad { background: var(--bad-soft); }
 .feedback h4 { margin: 0 0 4px; }
+.why { margin: 6px 0 10px; padding: 8px 10px; border-left: 3px solid var(--bad); background: color-mix(in srgb, var(--surface) 55%, transparent); border-radius: 0 8px 8px 0; }
+.why .rt { margin-top: 2px; }
 .quiz-actions { display: flex; gap: 10px; margin-top: 14px; }
 .quiz-actions .btn { flex: 1; }
 
