@@ -2,3 +2,5 @@ desktop/.venv/
 desktop/build/
 dist/
 __pycache__/
+psy/desktop/.venv/
+psy/desktop/build/
