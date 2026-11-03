@@ -4,6 +4,7 @@
 всеми дорожными знаками, разметкой, объяснениями, тестами и пробным экзаменом, как в сервисном центре МВД.
 
 > В папке [`psy/`](psy/README.md) лежит второе приложение того же формата — «Психопрофиль»: тест характера и совместимости для нескольких человек.
+> Сайт: https://iioverlordii.github.io/pdr-ukraine/psy/ · Windows: [Psychoprofile.exe](https://github.com/IIOverlordII/pdr-ukraine/releases/tag/psy-latest).
 
 ## Что внутри
 
@@ -67,10 +68,11 @@ python tools/build.py
 
 Скрипт проверит формат, ссылки на пункты и знаки и сообщит об ошибках.
 
-Опубликовать изменения на сайт (ветка `gh-pages` содержит только папку `app`):
+Опубликовать изменения на сайт: закоммитьте и отправьте их в `main` — GitHub Actions (`.github/workflows/pages.yml`)
+сам соберёт ветку `gh-pages`: ПДР в корне сайта, «Психопрофиль» в `/psy/`.
 
 ```bash
-git add -A && git commit -m "Обновление вопросов" && git push && git subtree push --prefix app origin gh-pages
+git add -A && git commit -m "Обновление вопросов" && git push
 ```
 
 Установленное на телефоне приложение подтянет новую версию при следующем запуске с интернетом.

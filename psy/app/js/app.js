@@ -716,8 +716,9 @@
         <div class="setting"><span class="label">Размер текста</span>${seg('fs', [[15, 'A−'], [16, 'A'], [18, 'A+'], [20, 'A++']], Store.d.fs)}</div></div>
       <div class="card"><h3 class="card-h">Данные</h3><p class="small">Все ответы хранятся только на этом устройстве. Чтобы перенести участников на другое устройство, скопируйте их коды и вставьте там через «Добавить по коду».</p>
         <div class="row"><button class="btn secondary" id="expBtn"${dn.length ? '' : ' disabled'}>Коды всех участников</button><button class="btn danger" id="wipeBtn"${people().length ? '' : ' disabled'}>Удалить всех</button></div></div>
-      <div class="card"><h3 class="card-h">Установка</h3><p class="small">Windows: запустите «Психопрофиль.exe» или откройте приложение в Edge/Chrome → меню → «Приложения» → «Установить».</p>
-        <p class="small">iPhone/iPad: откройте ссылку в Safari → «Поделиться» → «На экран „Домой“». После первого запуска работает без интернета.</p>
+      <div class="card"><h3 class="card-h">Установка</h3><p class="small">Сайт: <a href="https://iioverlordii.github.io/pdr-ukraine/psy/" target="_blank" rel="noopener">iioverlordii.github.io/pdr-ukraine/psy/</a></p>
+        <p class="small">iPhone/iPad: откройте сайт в Safari → «Поделиться» → «На экран „Домой“». После первого запуска работает без интернета.</p>
+        <p class="small">Android: Chrome → меню → «Установить приложение». Windows: <a href="https://github.com/IIOverlordII/pdr-ukraine/releases/tag/psy-latest" target="_blank" rel="noopener">Psychoprofile.exe</a> или Edge/Chrome → меню → «Приложения» → «Установить».</p>
         <button class="btn" id="installBtn"${installEvt ? '' : ' hidden'}>Установить приложение</button></div>
       <div class="card"><h3 class="card-h">О приложении</h3><p class="small">${E.N} вопросов в ${E.MODS.length} блоках. Вопросы о чертах личности адаптированы из открытой базы International Personality Item Pool (общественное достояние), остальные составлены для этого приложения по описаниям научных моделей (см. «Теория»).</p>
         <p class="small">Результаты — самоописание, а не диагноз. Если вас беспокоит эмоциональное состояние, обратитесь к психологу или психотерапевту.</p></div>`;

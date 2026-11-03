@@ -1,0 +1,68 @@
+# Site on GitHub Pages: PDR at the root, Psychoprofile at /psy/.
+# Every branch gets a build check + downloadable preview; only main is published to gh-pages.
+name: Сайт (GitHub Pages)
+
+on:
+  push:
+    paths:
+      - 'app/**'
+      - 'psy/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Тесты Психопрофиля
+        run: node --test psy/test/engine.test.js
+
+      - name: Сборка Психопрофиля (проверка data.js, офлайн-кэш)
+        run: python3 psy/tools/build.py
+
+      - name: Собрать сайт
+        run: |
+          mkdir -p _site/psy
+          cp -r app/. _site/
+          cp -r psy/app/. _site/psy/
+          touch _site/.nojekyll
+          ls _site _site/psy
+
+      - name: Превью сайта
+        uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: _site
+          include-hidden-files: true
+          retention-days: 7
+
+      - name: Опубликовать в gh-pages
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --depth=1 origin gh-pages
+          git worktree add --detach "$RUNNER_TEMP/pages" origin/gh-pages
+          cd "$RUNNER_TEMP/pages"
+          git rm -rq --ignore-unmatch .
+          cp -r "$GITHUB_WORKSPACE/_site/." .
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Сайт не изменился"
+            exit 0
+          fi
+          git commit -q -m "Сайт: ${GITHUB_SHA::7}"
+          git push origin HEAD:gh-pages
