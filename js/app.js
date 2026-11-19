@@ -119,6 +119,16 @@
   T.ru.errorsForms = 'ошибка|ошибки|ошибок';
   Object.assign(T.uk, { whyWrong: 'Чому ця відповідь неправильна', thatIsSign: 'Це назва знака', pictureShows: 'На малюнку —', youChoseSign: 'Ви обрали знак', thatIsMark: 'Так позначається розмітка' });
   Object.assign(T.ru, { whyWrong: 'Почему этот ответ неправильный', thatIsSign: 'Это название знака', pictureShows: 'На рисунке —', youChoseSign: 'Вы выбрали знак', thatIsMark: 'Так обозначается разметка' });
+  Object.assign(T.uk, {
+    topicsHsc: 'Офіційні питання ГСЦ МВС', topicsHscSub: 'Питання з бази, за якою складають теоретичний іспит (наказ ГСЦ МВС від 04.09.2025 № 190), розділи для категорії B.',
+    topicsOwn: 'Додаткові тренувальні питання', hscNum: 'ГСЦ', examRules: 'Як у сервісному центрі МВС: 20 питань з офіційної бази ГСЦ МВС, 20 хвилин. Іспит складено, якщо допущено не більше 2 помилок.',
+    aboutText: 'Текст Правил дорожнього руху (постанова КМУ № 1306 від 10.10.2001) у редакції, чинній на дату збирання. Офіційні тестові питання — з бази ГСЦ МВС (наказ від 04.09.2025 № 190, hsc.gov.ua); пояснення до них і переклад російською — неофіційні, для навчання. Зображення знаків — Wikimedia Commons (суспільне надбання). Звіряйтеся з офіційним текстом на zakon.rada.gov.ua.'
+  });
+  Object.assign(T.ru, {
+    topicsHsc: 'Официальные вопросы ГСЦ МВД', topicsHscSub: 'Вопросы из базы, по которой сдают теоретический экзамен (приказ ГСЦ МВД от 04.09.2025 № 190), разделы для категории B.',
+    topicsOwn: 'Дополнительные тренировочные вопросы', hscNum: 'ГСЦ', examRules: 'Как в сервисном центре МВД: 20 вопросов из официальной базы ГСЦ МВД, 20 минут. Экзамен сдан, если допущено не более 2 ошибок.',
+    aboutText: 'Текст Правил дорожного движения (постановление КМУ № 1306 от 10.10.2001) в редакции, действующей на дату сборки; русский текст — перевод для удобства. Официальные тестовые вопросы — из базы ГСЦ МВД (приказ от 04.09.2025 № 190, hsc.gov.ua); объяснения к ним и перевод на русский — неофициальные, для обучения. Изображения знаков — Wikimedia Commons (общественное достояние). Сверяйтесь с официальным текстом на zakon.rada.gov.ua.'
+  });
   // 1 помилка, 2–4 помилки, 5+ помилок (однаково для uk і ru)
   const plural = (n, forms) => {
     const [one, few, many] = forms.split('|'), m10 = n % 10, m100 = n % 100;
@@ -134,6 +144,7 @@
   const MARKING = window.MARKING || { list: [] };
   const EXPLAIN = window.EXPLAIN || {};
   const QDATA = window.QUESTIONS || { list: [] };
+  const HSC = window.HSC || { sections: [], list: [] };
 
   const SEC = {}, POINT = {}, SIGN = {}, MARK = {}, Q = {};
   PDR.sections.forEach(s => { SEC[s.n] = s; s.points.forEach(p => { POINT[p.n] = { sec: s, p }; }); });
@@ -148,10 +159,11 @@
     if (s.g <= 5) GEN.push({ id: 'sp:' + s.c, t: 'g' + s.g, kind: 'signPick', sign: s.c });
   });
   MARKING.list.forEach(m => { if (window.MarkingDraw && MarkingDraw.has(m.c)) GEN.push({ id: 'mq:' + m.c, t: 'mk', kind: 'mark', mark: m.c }); });
-  const ALLQ = (QDATA.list || []).concat(GEN);
+  const ALLQ = (HSC.list || []).concat(QDATA.list || [], GEN);
   ALLQ.forEach(q => { Q[q.id] = q; });
 
   const TOPICS = [];
+  (HSC.sections || []).forEach(s => TOPICS.push({ id: 'h' + s.n, kind: 'hsc', n: s.n, name: s.title }));
   PDR.sections.forEach(s => TOPICS.push({ id: 's' + s.n, kind: 'rules', n: s.n, name: s.title }));
   SIGNS.groups.forEach(g => TOPICS.push({ id: 'g' + g.n, kind: 'signs', n: g.n, name: g.name }));
   TOPICS.push({ id: 'mk', kind: 'other', name: { uk: T.uk.mk, ru: T.ru.mk } });
@@ -363,7 +375,9 @@
         <div class="rt">${blocksHtml(p.blocks)}</div></div>`).join('')}
       <div class="row" style="margin-top:14px">
         <button class="btn secondary" id="readBtn">${esc(Store.d.read[s.n] ? t('isRead') : t('markRead'))}</button>
-        ${nq ? `<a class="btn" href="#/test/s${s.n}">${esc(t('testSection'))} (${nq})</a>` : ''}
+        ${TOPICS.filter(x => x.kind === 'hsc' && String(x.n).split('.')[0] === String(s.n)).map(x =>
+          `<a class="btn" href="#/test/${x.id}">${esc(t('topicsHsc'))} ${esc(x.n)} (${qOfTopic(x.id).length})</a>`).join('')}
+        ${nq ? `<a class="btn${HSC.list.length ? ' secondary' : ''}" href="#/test/s${s.n}">${esc(t('testSection'))} (${nq})</a>` : ''}
       </div>
       <div class="pager">${prev ? `<a class="btn secondary" href="#/rules/${prev.n}">← ${prev.n}. ${esc(t('prev'))}</a>` : '<span></span>'}
         ${next ? `<a class="btn secondary" href="#/rules/${next.n}">${esc(t('next'))} ${next.n} →</a>` : ''}</div>`;
@@ -436,7 +450,7 @@
     const topicItem = tp => {
       const list = qOfTopic(tp.id);
       if (!list.length) return '';
-      const badge = tp.kind === 'rules' ? tp.n : tp.kind === 'signs' ? (SIGNS.list.find(s => s.g === tp.n && s.img) ? `<img src="${SIGNS.list.find(s => s.g === tp.n && s.img).img}" style="width:28px;height:28px;object-fit:contain" alt="">` : tp.n) : (tp.id === 'med' ? '✚' : tp.id === 'safe' ? '🛡' : '═');
+      const badge = tp.kind === 'rules' || tp.kind === 'hsc' ? tp.n : tp.kind === 'signs' ? (SIGNS.list.find(s => s.g === tp.n && s.img) ? `<img src="${SIGNS.list.find(s => s.g === tp.n && s.img).img}" style="width:28px;height:28px;object-fit:contain" alt="">` : tp.n) : (tp.id === 'med' ? '✚' : tp.id === 'safe' ? '🛡' : '═');
       return `<a class="list-item" href="#/test/${tp.id}"><span class="num-badge">${badge}</span>
         <span style="flex:1">${esc(L(tp.name))}<br><span class="muted small">${list.length} ${esc(t('q'))}${best(tp.id)}</span>
         <div class="progress" style="margin-top:6px"><i style="width:${doneShare(list)}%"></i></div></span>${icon('chev', 'chev')}</a>`;
@@ -450,6 +464,9 @@
         <a class="tile" href="#/test/mistakes"><div class="tile-ico">${icon('bad')}</div><div><div class="tile-title">${esc(t('mistakes'))} (${mis})</div><div class="tile-sub">${esc(t('mistakesSub'))}</div></div></a>
         <a class="tile" href="#/test/fav"><div class="tile-ico">${icon('star')}</div><div><div class="tile-title">${esc(t('favorites'))} (${fav})</div><div class="tile-sub">${esc(t('favQuestions'))}</div></div></a>
       </div>
+      ${HSC.list.length ? `<h3>${esc(t('topicsHsc'))}</h3><p class="small muted" style="margin-top:-6px">${esc(t('topicsHscSub'))}</p>
+      <div class="list">${TOPICS.filter(x => x.kind === 'hsc').map(topicItem).join('')}</div>
+      <h2 style="margin-top:26px">${esc(t('topicsOwn'))}</h2>` : ''}
       <h3>${esc(t('topicsRules'))}</h3><div class="list">${TOPICS.filter(x => x.kind === 'rules').map(topicItem).join('')}</div>
       <h3>${esc(t('topicsSigns'))}</h3><div class="list">${TOPICS.filter(x => x.kind === 'signs').map(topicItem).join('')}</div>
       <h3>${esc(t('topicsOther'))}</h3><div class="list">${TOPICS.filter(x => x.kind === 'other').map(topicItem).join('')}</div>`;
@@ -503,6 +520,7 @@
     if (q.kind === 'signName') return `<div class="q-media"><img class="sign" src="${SIGN[q.sign].img}" alt=""></div>`;
     if (q.kind === 'mark') return `<div class="q-media"><div class="mk mk-q">${MarkingDraw.svg(q.mark)}</div></div>`;
     if (q.kind === 'signPick') return '';
+    if (q.pic) return `<div class="q-media">${q.pic.map(src => `<img class="photo" src="${src}" alt="">`).join('')}</div>`;
     const im = q.img;
     if (!im) return '';
     let h = '';
@@ -524,6 +542,7 @@
       return s.desc && s.desc.length ? rt(L(s.desc[0])) : `<b>${s.c} «${esc(L(s.name))}»</b>`;
     }
     if (q.kind === 'mark') { const m = MARK[q.mark]; return m.desc && m.desc.length ? rt(L(m.desc[0])) : `<b>${m.c}</b> — ${esc(L(m.name))}`; }
+    if (!q.e) return `<b>${esc(t('correctIs'))}:</b> ${q.c + 1}. ${esc(L(q.a[q.c]))}`;
     return rt(L(q.e));
   }
   function qRefs(q) {
@@ -582,7 +601,7 @@
     const favOn = !!Store.d.favQ[q.id];
     view().innerHTML = `${nav}
       <div class="card q-card">${qMedia(q)}<div class="q-body">
-        <div class="row"><div class="q-id">${esc(t('question'))} ${quiz.i + 1}${TOPIC[q.t] ? ' · ' + esc(L(TOPIC[q.t].name)) : ''}</div><span class="spacer"></span>
+        <div class="row"><div class="q-id">${esc(t('question'))} ${quiz.i + 1}${TOPIC[q.t] ? ' · ' + esc(L(TOPIC[q.t].name)) : ''}${q.num ? ` · ${esc(t('hscNum'))} №${q.num}` : ''}</div><span class="spacer"></span>
         <button class="icon-btn" id="favQ" style="width:34px;height:34px">${icon('star', 'star' + (favOn ? ' on' : ''))}</button></div>
         <div class="q-text">${esc(qText(q))}</div>
         <div class="opts${imgOpts ? ' imgs' : ''}">${opts}</div>${fb}
@@ -699,6 +718,15 @@
   function examIds() {
     const used = new Set(), out = [];
     const take = (pool, n) => { for (const q of shuffle(pool)) { if (out.length >= 20 || n <= 0) break; if (!used.has(q.id)) { used.add(q.id); out.push(q.id); n--; } } };
+    if (HSC.list.length >= 20) {
+      // як у сервісному центрі: 20 випадкових питань з офіційної бази, не більше 4 з одного розділу
+      const per = {};
+      for (const q of shuffle(HSC.list)) {
+        if (out.length >= 20) break;
+        if ((per[q.t] = (per[q.t] || 0) + 1) <= 4) out.push(q.id);
+      }
+      return out;
+    }
     const hand = (QDATA.list || []);
     take(GEN.filter(q => q.kind === 'signName'), 3);
     take(GEN.filter(q => q.kind === 'signPick'), 1);
@@ -738,7 +766,7 @@
     if (!ids.length) { view().innerHTML = `<div class="empty">${esc(t('emptyMistakes'))}</div>`; return; }
     view().innerHTML = `<p><a class="btn" href="#/test/mistakes">${esc(t('start'))} (${ids.length})</a></p><div class="list">${ids.map(id => {
       const q = Q[id];
-      return `<div class="list-item"><span class="num-badge">${esc(TOPIC[q.t] && TOPIC[q.t].kind === 'rules' ? TOPIC[q.t].n : '•')}</span><span style="flex:1">${esc(qText(q))}${q.kind === 'signName' || q.kind === 'signPick' ? ` (${q.sign})` : q.kind === 'mark' ? ` (${q.mark})` : ''}</span></div>`;
+      return `<div class="list-item"><span class="num-badge">${esc(q.num ? q.num : TOPIC[q.t] && TOPIC[q.t].kind === 'rules' ? TOPIC[q.t].n : '•')}</span><span style="flex:1">${esc(qText(q))}${q.kind === 'signName' || q.kind === 'signPick' ? ` (${q.sign})` : q.kind === 'mark' ? ` (${q.mark})` : ''}</span></div>`;
     }).join('')}</div>`;
   }
 
