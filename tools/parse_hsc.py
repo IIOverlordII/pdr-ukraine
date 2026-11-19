@@ -22,7 +22,6 @@ OPTION = re.compile(r'^(\d)\)\s*(.*)$')
 
 def stream(doc):
     """Текстові рядки й зображення в порядку читання: (сторінка, y, тип, дані)."""
-    seen_xref_pages = {}
     for pno, page in enumerate(doc):
         items, bullets = [], []
         blocks = page.get_text('dict')['blocks']
@@ -44,8 +43,10 @@ def stream(doc):
                     items.append((y0, x0, 'text', text))
             elif b['type'] == 1:
                 w, h = b['bbox'][2] - b['bbox'][0], b['bbox'][3] - b['bbox'][1]
-                if w > 40 and h > 30:                     # дрібні елементи оформлення пропускаємо
-                    items.append((b['bbox'][1], b['bbox'][0], 'img', (pno, b['bbox'])))
+                # знаки бувають завбільшки ~30×30 pt, таблички — ~57×18 pt; маркери (<16 pt) і широкі смуги-підкладки
+                # під варіантами (~180×16 pt) пропускаємо
+                if (w >= 20 and h >= 20) or (h >= 12 and 30 <= w <= 120):
+                    items.append((b['bbox'][1], b['bbox'][0], 'img', (pno, b['bbox'], b.get('width') or 0)))
         items.sort(key=lambda t: (round(t[0] / 3), t[1]))
         for y, x, kind, data in items:
             yield pno, kind, data
@@ -156,10 +157,13 @@ for sec in sections:
         else:
             q['c'] = c - 1
         imgs = []
-        for k, (pno, bbox) in enumerate(q.pop('_img', []), 1):
+        for k, (pno, bbox, src_w) in enumerate(q.pop('_img', []), 1):
             name = f"{sec['n']}-{q['n']}-{k}.jpg"
-            pix = doc[pno].get_pixmap(clip=pymupdf.Rect(bbox), dpi=110)
-            pix.save(img_dir / name, jpg_quality=82)
+            bw = bbox[2] - bbox[0]
+            # роздільність оригіналу, але не ширше 600 px (застосунок показує до 560) і не вужче 150 px — дрібні знаки збільшуємо
+            dpi = round(max(min(72 * src_w / bw if src_w else 110, 600 * 72 / bw, 200), 150 * 72 / bw))
+            pix = doc[pno].get_pixmap(clip=pymupdf.Rect(bbox), dpi=dpi)
+            pix.save(img_dir / name, jpg_quality=78)
             imgs.append(f'img/hsc/{name}')
         if imgs:
             q['img'] = imgs
