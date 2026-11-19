@@ -228,6 +228,108 @@ for f in sorted((CONTENT / 'questions').glob('*.txt')):
             errors.append(f'{where}: незрозумілий рядок: {line[:50]}')
     flush()
 
+# ───────────── Офіційні питання ГСЦ МВС (див. content/hsc/README.md) ─────────────
+hsc_src = json.loads(read(CONTENT / 'hsc_uk.json') or '{"sections": []}')
+hsc_titles = {}
+for i, line in enumerate(read(CONTENT / 'hsc' / 'titles.txt').splitlines(), 1):
+    if line.strip() and not line.startswith('//'):
+        n, _, rest = line.strip().partition(' ')
+        hsc_titles[n] = pair(rest, f'hsc/titles.txt:{i}')
+point_ns = {p['n'] for _, p in all_points}
+hsc_sections, hsc_list, hsc_stat = [], [], {}
+
+
+def hsc_extra(n):
+    """Розбирає content/hsc/<розділ>.txt і <розділ>-*.txt → {номер питання: {поле: значення}}."""
+    out = {}
+    for path in [CONTENT / 'hsc' / f'{n}.txt'] + sorted((CONTENT / 'hsc').glob(f'{n}-*.txt')):
+        hsc_extra_file(path, out)
+    return out
+
+
+def hsc_extra_file(path, out):
+    cur = None
+    for i, raw in enumerate(read(path).splitlines(), 1):
+        line = raw.rstrip()
+        where = f'hsc/{path.name}:{i}'
+        if not line.strip() or line.startswith('//'):
+            continue
+        m = re.match(r'^# (\d+)\s*$', line)
+        if m:
+            cur = out.setdefault(int(m.group(1)), {'_where': where, 'a': {}, 'w': {}, 'ua': {}})
+            continue
+        if cur is None:
+            errors.append(f'{where}: рядок до першого «# N»')
+            continue
+        key, sep, val = line.partition(': ')
+        if not sep:
+            errors.append(f'{where}: незрозумілий рядок: {line[:50]}')
+        elif key == 'Q':
+            cur['q'] = val.strip()
+        elif key == 'E':
+            cur['e'] = pair(val, where)
+        elif key == 'R':
+            cur['ref'] = [r for r in val.replace(',', ' ').split() if r != '-']
+        elif key == 'UQ':
+            cur['uq'] = val.strip()
+        elif re.fullmatch(r'\d', key):
+            cur['a'][int(key)] = val.strip()
+        elif re.fullmatch(r'~\d', key):
+            cur['w'][int(key[1])] = pair(val, where)
+        elif re.fullmatch(r'U\d', key):
+            cur['ua'][int(key[1])] = val.strip()
+        else:
+            errors.append(f'{where}: невідоме поле «{key}»')
+    return out
+
+
+for sec in hsc_src['sections']:
+    n = sec['n']
+    title = hsc_titles.get(n) or {'uk': sec['title'].capitalize(), 'ru': sec['title'].capitalize()}
+    extra = hsc_extra(n)
+    nums = {q['n'] for q in sec['questions']}
+    for k, x in extra.items():
+        if k not in nums:
+            errors.append(f"{x['_where']}: у розділі {n} немає питання {k}")
+    st = hsc_stat[n] = {'all': len(sec['questions']), 'ru': 0, 'e': 0, 'w': 0}
+    for src in sec['questions']:
+        x = extra.get(src['n'], {'a': {}, 'w': {}, 'ua': {}})
+        where = x.get('_where', f'{n}.{src["n"]}')
+        na = len(src['a'])
+        if x['a'] and sorted(x['a']) != list(range(1, na + 1)):
+            errors.append(f'{where}: перекладено варіанти {sorted(x["a"])}, а в оригіналі їх {na}')
+        for k in list(x['w']) + list(x['ua']):
+            if not 1 <= k <= na:
+                errors.append(f'{where}: варіанта {k} немає (усього {na})')
+        if src['c'] + 1 in x['w']:
+            errors.append(f'{where}: «~{src["c"] + 1}» — це правильна відповідь')
+        for r in x.get('ref', []):
+            if r not in point_ns:
+                errors.append(f'{where}: немає пункту {r}')
+        q = {'id': f'h{n}-{src["n"]}', 't': 'h' + n, 'num': f'{n}.{src["n"]}',
+             'q': {'uk': x.get('uq') or src['q'], 'ru': x.get('q') or ''},
+             'a': [], 'c': src['c']}
+        for k, a_uk in enumerate(src['a'], 1):
+            a = {'uk': x['ua'].get(k) or a_uk, 'ru': x['a'].get(k, '')}
+            if k in x['w']:
+                a['w'] = x['w'][k]
+            q['a'].append(a)
+        if 'e' in x:
+            q['e'] = x['e']
+        if x.get('ref'):
+            q['ref'] = x['ref']
+        if src.get('img'):
+            q['pic'] = src['img']
+        # порожні переклади не зберігаємо — застосунок покаже український текст
+        for o in [q['q']] + q['a']:
+            if not o['ru']:
+                del o['ru']
+        st['ru'] += 'q' in x
+        st['e'] += 'e' in x
+        st['w'] += all(k in x['w'] for k in range(1, na + 1) if k != src['c'] + 1)
+        hsc_list.append(q)
+    hsc_sections.append({'n': n, 'title': title})
+
 # ───────────── запис ─────────────
 data = APP / 'data'
 data.mkdir(exist_ok=True)
@@ -243,18 +345,29 @@ js('signs.js', 'SIGNS', {'groups': [{'n': n, 'name': {'uk': a, 'ru': b}, 'short'
 js('marking.js', 'MARKING', {'list': marking})
 js('explain.js', 'EXPLAIN', explain)
 js('questions.js', 'QUESTIONS', {'list': questions})
+js('hsc.js', 'HSC', {'sections': hsc_sections, 'list': hsc_list})
 
-# список файлів для service worker; версія — хеш вмісту (без index.html, куди її вписуємо)
-files = sorted(str(p.relative_to(APP)).replace('\\', '/') for p in APP.rglob('*') if p.is_file() and p.name != 'sw.js')
-h = hashlib.sha1()
-for f in files:
-    if f != 'index.html':
-        h.update(f.encode() + (APP / f).read_bytes())
-digest = h.hexdigest()[:10]
+# список файлів для service worker; версія — хеш вмісту (без index.html, куди її вписуємо).
+# Картинки кешуються окремо зі своєю версією, щоб оновлення коду не завантажувало їх заново.
+all_files = sorted(str(p.relative_to(APP)).replace('\\', '/') for p in APP.rglob('*') if p.is_file() and p.name != 'sw.js')
+img_files = [f for f in all_files if f.startswith('img/')]
+files = [f for f in all_files if not f.startswith('img/')]
+
+
+def digest_of(names):
+    h = hashlib.sha1()
+    for f in names:
+        if f != 'index.html':
+            h.update(f.encode() + (APP / f).read_bytes())
+    return h.hexdigest()[:10]
+
+
+digest, img_digest = digest_of(files), digest_of(img_files)
 # ?v=<версія> у посиланнях на css/js/data, щоб браузер і WebView2 не брали старі файли з кешу
 index = APP / 'index.html'
 index.write_text(re.sub(r'((?:src|href)="(?:css|js|data)/[^"?]+)(?:\?v=[^"]*)?"', rf'\1?v={digest}"', read(index)), encoding='utf-8', newline='\n')
-sw = read(ROOT / 'tools' / 'sw.template.js').replace('__VERSION__', digest).replace('__FILES__', json.dumps(['./'] + files, ensure_ascii=False))
+sw = (read(ROOT / 'tools' / 'sw.template.js').replace('__VERSION__', digest).replace('__IMG_VERSION__', img_digest)
+      .replace('__FILES__', json.dumps(['./'] + files, ensure_ascii=False)).replace('__IMAGES__', json.dumps(img_files, ensure_ascii=False)))
 (APP / 'sw.js').write_text(sw, encoding='utf-8', newline='\n')
 
 by_topic = {}
@@ -265,7 +378,12 @@ print(f"rules: {len(pdr['sections'])} sections, ru {ru_done}/{total_blocks} bloc
 print(f"signs: {len(signs)}, without image: {len(missing_img)} {missing_img[:12]}, without ru name: {len(missing_ru)}")
 print(f"marking: {len(marking)}, explain: {len(explain)} sections, questions: {len(questions)} {by_topic}")
 print(f"wrong answers without «~» explanation: {no_why}")
-print(f"sw: {len(files)} files, version {digest}")
+tot = {k: sum(s[k] for s in hsc_stat.values()) for k in ('all', 'ru', 'e', 'w')}
+print(f"hsc: {len(hsc_sections)} sections, {tot['all']} questions; ru {tot['ru']}, explained {tot['e']}, why-wrong complete {tot['w']}")
+todo = [f"{n}({s['all'] - min(s['ru'], s['e'], s['w'])})" for n, s in hsc_stat.items() if min(s['ru'], s['e'], s['w']) < s['all']]
+if todo:
+    print('  not finished:', ' '.join(todo))
+print(f"sw: {len(files)} files + {len(img_files)} images, version {digest} / img {img_digest}")
 if errors:
     print(f'\n{len(errors)} problem(s):')
     for e in errors[:60]:

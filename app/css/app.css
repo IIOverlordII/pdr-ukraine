@@ -290,6 +290,7 @@ mark { background: #ffe58a; color: #111; border-radius: 3px; padding: 0 1px; }
 .q-card { padding: 0; overflow: hidden; }
 .q-media { background: var(--surface-2); display: flex; justify-content: center; align-items: center; padding: 14px; gap: 14px; flex-wrap: wrap; }
 .q-media img.sign { height: 150px; width: auto; max-width: 45%; }
+.q-media img.photo { display: block; width: 100%; max-width: 560px; height: auto; border-radius: 10px; background: #fff; }
 .q-media .scene { width: 100%; max-width: 440px; }
 .q-media .scene svg { width: 100%; height: auto; border-radius: 10px; }
 .q-media .mk-q { width: 100%; max-width: 380px; height: 150px; }
